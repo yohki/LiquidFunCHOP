@@ -1,6 +1,13 @@
+#include <memory>
+#include <vector>
+
 #include "CHOP_CPlusPlusBase.h"
 #include "Box2D/Box2D.h"
+#include "SceneBase.h"
 #include "Testbed/Framework/ParticleEmitter.h"
+
+using namespace std;
+
 /*
 
 This example file implements a class that does 2 different things depending on
@@ -41,15 +48,14 @@ private:
 	// LiquidFun
 	b2World* _world;
 	b2ParticleSystem* _particleSystem;
-	RadialEmitter _emitter;
 	b2Body* _groundBody;
 	bool _initialized = false;
 
 	void init(const OP_Inputs* inputs);
 	void restart();
 
-	void initDambreak(const OP_Inputs* inputs);
-	void initWaterfall(const OP_Inputs* inputs);
+	vector<shared_ptr<SceneBase>> _scenes;
+	int _sceneIndex = -1;
 
 	// We don't need to store this pointer, but we do for the example.
 	// The OP_NodeInfo class store information about the node that's using

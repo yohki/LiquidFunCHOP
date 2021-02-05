@@ -6,6 +6,9 @@
 #include <cmath>
 #include <assert.h>
 
+#include "DamBreak.h"
+#include "Faucet.h"
+
 // These functions are basic C function, which the DLL loader can find
 // much easier than finding a C++ Class.
 // The DLLEXPORT prefix is needed so the compile exports these functions from the .dll
@@ -52,7 +55,10 @@ extern "C" {
 
 
 LiquidFunCHOP::LiquidFunCHOP(const OP_NodeInfo* info) : myNodeInfo(info) {
-
+	shared_ptr<SceneBase> damBreak(new DamBreak());
+	_scenes.push_back(damBreak);
+	shared_ptr<SceneBase> faucet(new Faucet());
+	_scenes.push_back(faucet);
 }
 
 LiquidFunCHOP::~LiquidFunCHOP() {
@@ -72,8 +78,8 @@ void LiquidFunCHOP::init(const OP_Inputs* inputs) {
 
 	// Particle System
 	double radius = inputs->getParDouble("Particlesize");
-	double gravityScale = inputs->getParDouble("Particlegravityscale");
-	double density = inputs->getParDouble("Particledensity");
+	//double gravityScale = inputs->getParDouble("Particlegravityscale");
+	//double density = inputs->getParDouble("Particledensity");
 	double damping = inputs->getParDouble("Particledamping");
 	const b2ParticleSystemDef particleSystemDef;
 	_particleSystem = _world->CreateParticleSystem(&particleSystemDef);
@@ -85,129 +91,13 @@ void LiquidFunCHOP::init(const OP_Inputs* inputs) {
 	b2BodyDef bodyDef;
 	_groundBody = _world->CreateBody(&bodyDef);
 
-	int scene = inputs->getParInt("Scene");
-	if (scene == 0) {
-		initDambreak(inputs);
-	} else if (scene == 1) {
-		initWaterfall(inputs);
+	int sceneIndex = inputs->getParInt("Sceneindex");
+	if (0 <= sceneIndex && sceneIndex < _scenes.size()) {
+		auto scene = _scenes[sceneIndex];
+		scene->setup(_world, _particleSystem, inputs);
+		_initialized = true;
+		_sceneIndex = sceneIndex;
 	}
-	_initialized = true;
-
-}
-
-void LiquidFunCHOP::initDambreak(const OP_Inputs* inputs) {
-	b2BodyDef bd;
-	b2Body* ground = _world->CreateBody(&bd);
-
-	b2ChainShape chain;
-	const b2Vec2 vertices[4] = {
-		b2Vec2(-2, -2),
-		b2Vec2(2, -2),
-		b2Vec2(2, 2),
-		b2Vec2(-2, 2) };
-	chain.CreateLoop(vertices, 4);
-	ground->CreateFixture(&chain, 0.0f);
-
-
-	b2PolygonShape polygon;
-	polygon.SetAsBox(0.8f, 1.0f, b2Vec2(-1.2f, -1.01f), 0);
-	b2ParticleGroupDef pd;
-	int particleType = inputs->getParInt("Particletype");
-	if (particleType == 0) {
-		pd.groupFlags = b2_solidParticleGroup;
-	} else if (particleType == 1) {
-		pd.groupFlags = b2_rigidParticleGroup;
-	} else if (particleType == 2) {
-		pd.flags = b2_elasticParticle;
-	}
-	pd.shape = &polygon;
-	b2ParticleGroup* const group = _particleSystem->CreateParticleGroup(pd);
-	//if (pd.flags & b2_colorMixingParticle) {
-	//	ColorParticleGroup(group, 0);
-	//}
-
-	_initialized = true;
-}
-
-void LiquidFunCHOP::initWaterfall(const OP_Inputs* inputs) {
-	const int k_maxParticleCount = 1000;
-	const float k_particleLifetimeMin = 30.0f;
-	const float k_particleLifetimeMax = 50.0f;
-	const float k_containerHeight = 0.2f;
-	const float k_containerWidth = 1.0f;
-	const float k_containerThickness = 0.05f;
-	const float k_faucetWidth = 0.1f;
-	const float k_faucetHeight = 15.0f;
-	const float k_faucetLength = 2.0f;
-	const float k_spoutWidth = 1.1f;
-	const float k_spoutLength = 2.0f;
-	const float k_emitRateChangeFactor = 1.05f;
-	const float k_emitRateMin = 1.0f;
-	const float k_emitRateMax = 240.0f;
-
-	// Configure particle system parameters.
-	_particleSystem->SetRadius(0.035f);
-	_particleSystem->SetMaxParticleCount(k_maxParticleCount);
-	_particleSystem->SetDestructionByAge(true);
-
-	b2Body* ground = NULL;
-	{
-		b2BodyDef bd;
-		ground = _world->CreateBody(&bd);
-	}
-
-	// Create the container / trough style sink.
-	{
-		b2PolygonShape shape;
-		const float height = k_containerHeight + k_containerThickness;
-		shape.SetAsBox(k_containerWidth - k_containerThickness, k_containerThickness, b2Vec2(0.0f, 0.0f), 0.0f);
-		ground->CreateFixture(&shape, 0.0f);
-		shape.SetAsBox(k_containerThickness, height, b2Vec2(-k_containerWidth, k_containerHeight), 0.0f);
-		ground->CreateFixture(&shape, 0.0f);
-		shape.SetAsBox(k_containerThickness, height, b2Vec2(k_containerWidth, k_containerHeight), 0.0f);
-		ground->CreateFixture(&shape, 0.0f);
-	}
-
-	// Create ground under the container to catch overflow.
-	{
-		b2PolygonShape shape;
-		shape.SetAsBox(k_containerWidth * 5.0f, k_containerThickness, b2Vec2(0.0f, k_containerThickness * -2.0f), 0.0f);
-		ground->CreateFixture(&shape, 0.0f);
-	}
-
-	// Create the faucet spout.
-	{
-		b2PolygonShape shape;
-		const float32 particleDiameter = _particleSystem->GetRadius() * 2.0f;
-		const float32 faucetLength = k_faucetLength * particleDiameter;
-		// Dimensions of the faucet in world units.
-		const float32 length = faucetLength * k_spoutLength;
-		const float32 width = k_containerWidth * k_faucetWidth * k_spoutWidth;
-		// Height from the bottom of the container.
-		const float32 height = (k_containerHeight * k_faucetHeight) + (length * 0.5f);
-
-		shape.SetAsBox(particleDiameter, length, b2Vec2(-width, height), 0.0f);
-		ground->CreateFixture(&shape, 0.0f);
-		shape.SetAsBox(particleDiameter, length, b2Vec2(width, height), 0.0f);
-		ground->CreateFixture(&shape, 0.0f);
-		shape.SetAsBox(width - particleDiameter, particleDiameter, b2Vec2(0.0f, height + length - particleDiameter), 0.0f);
-		ground->CreateFixture(&shape, 0.0f);
-	}
-
-	// Initialize the particle emitter.
-	{
-		const float32 faucetLength = _particleSystem->GetRadius() * 2.0f * k_faucetLength;
-		_emitter.SetParticleSystem(_particleSystem);
-		//_emitter.SetCallback(&m_lifetimeRandomizer);
-		_emitter.SetPosition(b2Vec2(k_containerWidth * k_faucetWidth, k_containerHeight * k_faucetHeight +
-			(faucetLength * 0.5f)));
-		_emitter.SetVelocity(b2Vec2(0.0f, 0.0f));
-		_emitter.SetSize(b2Vec2(0.0f, faucetLength));
-		_emitter.SetColor(b2ParticleColor(255, 255, 255, 255));
-		_emitter.SetEmitRate(120.0f);
-		//_emitter.SetParticleFlags(TestMain::GetParticleParameterValue());
-	}
-
 }
 
 void LiquidFunCHOP::restart() {
@@ -248,15 +138,16 @@ LiquidFunCHOP::getChannelName(int32_t index, OP_String* name, const OP_Inputs* i
 }
 
 void LiquidFunCHOP::execute(CHOP_Output* output, const OP_Inputs* inputs, void* reserved) {
+
 	int velocityIter = inputs->getParInt("Velocityiterations");
 	int positionIter = inputs->getParInt("Positioniterations");
 	int fps = inputs->getParInt("Fps");
 	float dt = 1.0 / fps;
 	_world->Step(dt, velocityIter, positionIter);
 
-	int scene = inputs->getParInt("Scene");
-	if (scene == 1) {
-		_emitter.Step(dt, NULL, 0);
+	if (0 <= _sceneIndex && _sceneIndex < _scenes.size()) {
+		auto scene = _scenes[_sceneIndex];
+		scene->update(dt);
 	}
 
 	b2Vec2* positions = _particleSystem->GetPositionBuffer();
@@ -297,18 +188,18 @@ void LiquidFunCHOP::setupParameters(OP_ParameterManager* manager, void* reserved
 	}
 	// Scene
 	{
-		OP_StringParameter	sp;
+		if (0 < _scenes.size()) {
+			OP_NumericParameter	np;
 
-		sp.name = "Scene";
-		sp.label = "Scene";
+			np.name = "Sceneindex";
+			np.label = "Scene Index";
 
-		sp.defaultValue = "Dambreak";
+			np.defaultValues[0] = 0;
+			np.minSliders[0] = 0;
+			np.maxSliders[0] = _scenes.size() - 1;
 
-		const char* names[] = { "Dambreak", "Waterfall" };
-		const char* labels[] = { "Dam Break", "Waterfall" };
-
-		OP_ParAppendResult res = manager->appendMenu(sp, 2, names, labels);
-		assert(res == OP_ParAppendResult::Success);
+			manager->appendInt(np);
+		}
 	}
 	// Particle
 	{
