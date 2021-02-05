@@ -6,8 +6,7 @@
 #include <cmath>
 #include <assert.h>
 
-#include "DamBreak.h"
-#include "Faucet.h"
+#include "Scenes.h"
 
 // These functions are basic C function, which the DLL loader can find
 // much easier than finding a C++ Class.
@@ -57,6 +56,8 @@ extern "C" {
 LiquidFunCHOP::LiquidFunCHOP(const OP_NodeInfo* info) : myNodeInfo(info) {
 	shared_ptr<SceneBase> damBreak(new DamBreak());
 	_scenes.push_back(damBreak);
+	shared_ptr<SceneBase> waveMachine(new WaveMachine());
+	_scenes.push_back(waveMachine);
 	shared_ptr<SceneBase> faucet(new Faucet());
 	_scenes.push_back(faucet);
 }

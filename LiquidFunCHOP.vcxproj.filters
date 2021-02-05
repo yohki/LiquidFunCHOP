@@ -17,6 +17,12 @@
     <ClInclude Include="Faucet.h">
       <Filter>Scenes</Filter>
     </ClInclude>
+    <ClInclude Include="WaveMachine.h">
+      <Filter>Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="Scenes.h">
+      <Filter>Scenes</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Scenes">

@@ -87,6 +87,8 @@
     <ClInclude Include="DamBreak.h" />
     <ClInclude Include="Faucet.h" />
     <ClInclude Include="GL_Extensions.h" />
+    <ClInclude Include="Scenes.h" />
+    <ClInclude Include="WaveMachine.h" />
     <ClInclude Include="LiquidFunCHOP.h" />
     <ClInclude Include="SceneBase.h" />
   </ItemGroup>
