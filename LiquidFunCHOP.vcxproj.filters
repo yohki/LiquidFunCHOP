@@ -14,9 +14,6 @@
     <ClInclude Include="SceneBase.h">
       <Filter>Scenes</Filter>
     </ClInclude>
-    <ClInclude Include="Faucet.h">
-      <Filter>Scenes</Filter>
-    </ClInclude>
     <ClInclude Include="WaveMachine.h">
       <Filter>Scenes</Filter>
     </ClInclude>

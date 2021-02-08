@@ -58,8 +58,6 @@ LiquidFunCHOP::LiquidFunCHOP(const OP_NodeInfo* info) : myNodeInfo(info) {
 	_scenes.push_back(damBreak);
 	shared_ptr<SceneBase> waveMachine(new WaveMachine());
 	_scenes.push_back(waveMachine);
-	shared_ptr<SceneBase> faucet(new Faucet());
-	_scenes.push_back(faucet);
 }
 
 LiquidFunCHOP::~LiquidFunCHOP() {
